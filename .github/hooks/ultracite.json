@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "postToolUse": [
+      {
+        "command": "pnpm exec ultracite fix --skip=correctness/noUnusedImports --hook",
+        "type": "command"
+      }
+    ]
+  },
+  "version": 1
+}
