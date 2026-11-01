@@ -33,6 +33,12 @@
       "preset": "recommended",
       "a11y": {
         "noSvgWithoutTitle": "off"
+      },
+      "performance": {
+        "noJsxPropsBind": "off"
+      },
+      "suspicious": {
+        "noLeakedRender": "off"
       }
     },
     "domains": {

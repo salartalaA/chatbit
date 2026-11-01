@@ -10,6 +10,6 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
     minPasswordLength: 8,
-    maxPasswordLength: 128
-  }
+    maxPasswordLength: 128,
+  },
 });
