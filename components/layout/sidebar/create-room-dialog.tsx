@@ -76,7 +76,7 @@ const categories: RoomCategory[] = [
 
 const selfDestructTimers: SelfDestructTimer[] = ["15m", "1h", "6h", "24h"];
 
-export function CreateRoomDialog() {
+export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
   const [open, setOpen] = useState(false);
 
   const [name, setName] = useState("");
@@ -89,18 +89,29 @@ export function CreateRoomDialog() {
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger
-        render={
-          <Button
-            className="h-7 gap-1 px-2 text-xs"
-            size="sm"
-            variant="outline"
-          >
-            <Plus className="size-3.5" />
-            New
-          </Button>
-        }
-      />
+      {isWide ? (
+        <DialogTrigger
+          render={
+            <Button className="gap-2 font-semibold shadow-xs">
+              <Plus className="h-4 w-4" />
+              Create New Sound Lounge
+            </Button>
+          }
+        />
+      ) : (
+        <DialogTrigger
+          render={
+            <Button
+              className="h-7 gap-1 px-2 text-xs"
+              size="sm"
+              variant="outline"
+            >
+              <Plus className="size-3.5" />
+              New
+            </Button>
+          }
+        />
+      )}
 
       <DialogContent className="border-border bg-card text-card-foreground p-6">
         <DialogHeader className="border-border flex flex-row items-start justify-between border-b pb-3 text-left">
