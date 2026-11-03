@@ -102,7 +102,7 @@ export function CreateRoomDialog() {
         }
       />
 
-      <DialogContent className="border-border bg-card text-card-foreground max-w-lg! p-6">
+      <DialogContent className="border-border bg-card text-card-foreground p-6">
         <DialogHeader className="border-border flex flex-row items-start justify-between border-b pb-3 text-left">
           <div className="space-y-1">
             <DialogTitle className="text-foreground text-base leading-none font-semibold tracking-tight">
