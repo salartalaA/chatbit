@@ -115,6 +115,8 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+  --text-nano: 0.625rem;
+  --text-micro: 0.6875rem;
 }
 
 @layer base {
