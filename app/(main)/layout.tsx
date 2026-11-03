@@ -1,3 +1,4 @@
+import MusicPlayer from "@/components/layout/footer/music-player";
 import Header from "@/components/layout/header/header";
 import { AppSidebar } from "@/components/layout/sidebar/sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -17,6 +18,8 @@ export default function MainLayout({
           {children}
         </div>
       </SidebarProvider>
+
+      <MusicPlayer />
     </div>
   );
 }
