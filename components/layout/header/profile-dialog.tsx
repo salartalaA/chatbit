@@ -67,7 +67,7 @@ export function ProfileDialog() {
         }
       />
 
-      <DialogContent className="max-w-md gap-0 p-6">
+      <DialogContent className="gap-0 p-6">
         <DialogHeader className="border-border flex flex-row items-start justify-between space-y-1 border-b pb-3 text-left">
           <div className="space-y-1">
             <DialogTitle className="text-foreground text-base leading-none font-semibold tracking-tight">
@@ -102,7 +102,6 @@ export function ProfileDialog() {
 
             {/* Current Status */}
             <div className="space-y-1">
-              {/* biome-ignore lint/a11y/noLabelWithoutControl: Intentional */}
               <Label className="text-foreground text-xs font-medium">
                 Current Status
               </Label>
