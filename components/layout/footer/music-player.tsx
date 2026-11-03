@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ListMusic,
   Pause,
   Play,
   SkipBack,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { PlaylistDialog } from "@/components/layout/footer/playlist-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -172,18 +172,7 @@ export default function MusicPlayer() {
             </div>
           </div>
 
-          <Button
-            className="focus-visible:ring-ring border-border bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium shadow-xs transition-colors select-none focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-            variant="outline"
-          >
-            <ListMusic className="text-primary size-3.5!" />
-
-            <span className="hidden sm:inline">Queue</span>
-
-            <span className="py-0.2 bg-secondary text-secondary-foreground text-nano rounded-full px-1.5 font-semibold">
-              3
-            </span>
-          </Button>
+          <PlaylistDialog />
         </div>
       </div>
     </div>
