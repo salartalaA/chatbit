@@ -1,6 +1,13 @@
 "use client";
 
-import { CircleArrowUp, Disc3, ListMusic, Plus, Upload } from "lucide-react";
+import {
+  CircleArrowUp,
+  Disc3,
+  ListMusic,
+  Music,
+  Plus,
+  Upload,
+} from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +28,7 @@ type ActiveTab = "UPLOAD" | "CURATED";
 
 const FILE_EXTENSION_REGEX = /\.[^/.]+$/u;
 
-export function PlaylistDialog() {
+export function PlaylistDialog({ isWide = false }: { isWide?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [open, setOpen] = useState(false);
@@ -46,18 +53,28 @@ export function PlaylistDialog() {
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger
         render={
-          <Button
-            className="focus-visible:ring-ring border-border bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium shadow-xs transition-colors select-none focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-            variant="outline"
-          >
-            <ListMusic className="text-primary size-3.5!" />
+          isWide ? (
+            <Button
+              className="focus-visible:ring-ring border-border bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-medium shadow-xs transition-colors select-none focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+              variant="outline"
+            >
+              <ListMusic className="text-primary size-3.5!" />
 
-            <span className="hidden sm:inline">Musics</span>
+              <span className="hidden sm:inline">Musics</span>
 
-            <span className="py-0.2 bg-secondary text-secondary-foreground text-nano rounded-full px-1.5 font-semibold">
-              3
-            </span>
-          </Button>
+              <span className="py-0.2 bg-secondary text-secondary-foreground text-nano rounded-full px-1.5 font-semibold">
+                3
+              </span>
+            </Button>
+          ) : (
+            <button
+              className="hover:bg-muted hover:text-foreground cursor-pointer rounded p-1 transition-colors"
+              title="Add music to room"
+              type="button"
+            >
+              <Music className="h-4 w-4" />
+            </button>
+          )
         }
       />
 

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function LoungeHeader() {
   return (
-    <div className="bg-card text-card-foreground border-border m-4 mb-4 h-fit w-full rounded-lg border px-4 py-4 shadow-2xs">
+    <div className="bg-card text-card-foreground border-border mb-4 h-fit w-full rounded-lg border px-4 py-4 shadow-2xs">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="bg-secondary text-secondary-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-md">

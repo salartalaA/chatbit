@@ -172,7 +172,7 @@ export default function MusicPlayer() {
             </div>
           </div>
 
-          <PlaylistDialog />
+          <PlaylistDialog isWide />
         </div>
       </div>
     </div>
