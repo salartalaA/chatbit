@@ -1,8 +1,11 @@
 "use client";
 
-import { Clock, Globe, Lock, Plus } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Clock, Globe, Loader2, Lock, Plus } from "lucide-react";
 import { useState } from "react";
-
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { createRoom } from "@/actions/room";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,26 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  type CreateRoomInput,
+  type CreateRoomType,
+  createRoomSchema,
+} from "@/schemas/room.schema";
 
-type RoomType = "PUBLIC" | "PRIVATE" | "TEMPORARY";
-
-type RoomCategory =
-  | "Lo-Fi & Chill"
-  | "Synthwave & Retro"
-  | "Deep Ambient"
-  | "Gaming & Beats"
-  | "Study & Focus"
-  | "Late Night Talk";
-
-type SelfDestructTimer = "15m" | "1h" | "6h" | "24h";
-
-const roomTypes: {
-  label: string;
-  description: string;
-  value: RoomType;
-  icon: typeof Globe;
-  iconClassName: string;
-}[] = [
+const roomTypes = [
   {
     label: "Public",
     description: "Open to all listeners",
@@ -58,34 +49,70 @@ const roomTypes: {
   },
   {
     label: "Temporary",
-    description: "Auto-destruct timer",
+    description: "Auto-delete after time",
     value: "TEMPORARY",
     icon: Clock,
-    iconClassName: "text-amber-500",
+    iconClassName: "text-orange-400",
   },
-];
+] as const;
 
-const categories: RoomCategory[] = [
-  "Lo-Fi & Chill",
-  "Synthwave & Retro",
-  "Deep Ambient",
-  "Gaming & Beats",
-  "Study & Focus",
-  "Late Night Talk",
-];
+const categories = [
+  { label: "Lo-Fi & Chill", value: "LOFI_AND_CHILL" },
+  { label: "Synthwave & Retro", value: "SYNTHWAVE_AND_RETRO" },
+  { label: "Deep Ambient", value: "DEEP_AMBIENT" },
+  { label: "Gaming & Beats", value: "GAMING_AND_BEATS" },
+  { label: "Study & Focus", value: "STUDY_AND_FOCUS" },
+  { label: "Late Night Talk", value: "LATE_NIGHT_TALK" },
+] as const;
 
-const selfDestructTimers: SelfDestructTimer[] = ["15m", "1h", "6h", "24h"];
+const selfDestructTimers = [
+  { label: "15m", value: "15" },
+  { label: "1h", value: "60" },
+  { label: "6h", value: "360" },
+  { label: "24h", value: "1440" },
+] as const;
 
 export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
   const [open, setOpen] = useState(false);
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [roomType, setRoomType] = useState<RoomType>("PUBLIC");
-  const [category, setCategory] = useState<RoomCategory>("Lo-Fi & Chill");
-  const [tags, setTags] = useState("chill, music, beats");
-  const [selfDestructTimer, setSelfDestructTimer] =
-    useState<SelfDestructTimer>("1h");
+  const {
+    formState: { errors, isSubmitting },
+    watch,
+    reset,
+    setValue,
+    register,
+    handleSubmit,
+    getValues,
+  } = useForm<CreateRoomInput, unknown, CreateRoomType>({
+    resolver: zodResolver(createRoomSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "LOFI_AND_CHILL",
+      visibility: "PUBLIC",
+      duration: "PERMANENT",
+      durationMinutes: undefined,
+      tags: "",
+    },
+  });
+
+  const visibility = watch("visibility");
+  const duration = watch("duration");
+  const durationMinutes = watch("durationMinutes") ?? "15";
+
+  const onsubmit = async () => {
+    const result = await createRoom(getValues());
+
+    if (!result.success) {
+      toast.error(result.message);
+      return;
+    }
+
+    toast.success("Room created successfully");
+
+    setOpen(false);
+    reset();
+  };
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -126,7 +153,7 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
           </div>
         </DialogHeader>
 
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit(onsubmit)}>
           {/* Room Type */}
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
@@ -136,16 +163,33 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
             <div className="grid grid-cols-3 gap-2">
               {roomTypes.map((type) => {
                 const Icon = type.icon;
+                const isSelected =
+                  type.value === "TEMPORARY"
+                    ? duration === "TEMPORARY"
+                    : visibility === type.value;
 
                 return (
                   <button
-                    className={`cursor-pointer rounded-md border p-3 text-left transition-colors ${
-                      roomType === type.value
+                    className={cn(
+                      "cursor-pointer rounded-md border p-3 text-left transition-colors",
+                      isSelected
                         ? "border-primary bg-primary/10 text-foreground font-semibold shadow-2xs"
                         : "border-border bg-card text-muted-foreground hover:bg-muted"
-                    }`}
+                    )}
                     key={type.value}
-                    onClick={() => setRoomType(type.value)}
+                    onClick={() => {
+                      if (type.value === "TEMPORARY") {
+                        setValue("duration", "TEMPORARY", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      } else {
+                        setValue("visibility", type.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
                     type="button"
                   >
                     <Icon className={`mb-1 h-4 w-4 ${type.iconClassName}`} />
@@ -164,25 +208,31 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
           </div>
 
           {/* Self-Destruct Timer */}
-          {roomType === "TEMPORARY" && (
+          {duration === "TEMPORARY" && (
             <div className="bg-muted border-border space-y-1.5 rounded-md border p-3">
               <Label className="text-foreground block text-xs font-medium">
                 Self-Destruct Timer
               </Label>
 
               <div className="flex gap-2">
-                {selfDestructTimers.map((timer) => (
+                {selfDestructTimers.map((dur) => (
                   <button
-                    className={`flex-1 cursor-pointer rounded border py-1 text-xs font-medium transition-colors ${
-                      selfDestructTimer === timer
+                    className={cn(
+                      "flex-1 cursor-pointer rounded border py-1 text-xs font-medium transition-colors",
+                      durationMinutes === dur.value
                         ? "bg-primary text-primary-foreground border-primary font-bold"
                         : "bg-background border-border text-muted-foreground hover:bg-muted"
-                    }`}
-                    key={timer}
-                    onClick={() => setSelfDestructTimer(timer)}
+                    )}
+                    key={dur.label}
+                    onClick={() => {
+                      setValue("durationMinutes", dur.value ?? "15", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     type="button"
                   >
-                    {timer}
+                    {dur.label}
                   </button>
                 ))}
               </div>
@@ -202,12 +252,16 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
               <Input
                 className="bg-background border-border text-foreground focus-visible:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus-visible:ring-1"
                 id="room-name"
-                onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Midnight Beats"
-                required
                 type="text"
-                value={name}
+                {...register("title")}
               />
+
+              {errors.title && (
+                <p className="text-destructive text-xs" role="alert">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -216,17 +270,28 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
               </Label>
 
               <Select
-                onValueChange={(value) => setCategory(value as RoomCategory)}
-                value={category}
+                onValueChange={(value) =>
+                  setValue("category", value as CreateRoomType["category"], {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+                value={watch("category")}
               >
                 <SelectTrigger className="bg-background border-border text-foreground focus-visible:ring-ring w-full cursor-pointer rounded-md border px-3 py-1.5 text-sm focus-visible:ring-1">
-                  <SelectValue />
+                  <SelectValue>
+                    {
+                      categories.find(
+                        (item) => item.value === watch("category")
+                      )?.label
+                    }
+                  </SelectValue>
                 </SelectTrigger>
 
                 <SelectContent>
                   {categories.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -246,11 +311,16 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
             <Input
               className="bg-background border-border text-foreground focus-visible:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus-visible:ring-1"
               id="room-description"
-              onChange={(event) => setDescription(event.target.value)}
               placeholder="What is this lounge about?"
               type="text"
-              value={description}
+              {...register("description")}
             />
+
+            {errors.description && (
+              <p className="text-destructive text-xs" role="alert">
+                {errors.description.message}
+              </p>
+            )}
           </div>
 
           {/* Tags */}
@@ -265,11 +335,15 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
             <Input
               className="bg-background border-border text-foreground focus-visible:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus-visible:ring-1"
               id="room-tags"
-              onChange={(event) => setTags(event.target.value)}
               placeholder="vibes, coding, chill"
-              type="text"
-              value={tags}
+              {...register("tags")}
             />
+
+            {errors.tags && (
+              <p className="text-destructive text-xs" role="alert">
+                {errors.tags.message}
+              </p>
+            )}
           </div>
 
           {/* Actions */}
@@ -278,6 +352,7 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
               render={
                 <Button
                   className="h-8 gap-1.5 rounded-md px-3 text-xs"
+                  onClick={() => reset()}
                   type="button"
                   variant="outline"
                 >
@@ -288,11 +363,17 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
 
             <Button
               className="h-8 gap-1.5 rounded-md px-3 text-xs font-semibold"
-              disabled={!name.trim()}
+              disabled={isSubmitting}
               type="submit"
             >
-              <Plus className="h-4 w-4" />
-              Create Room
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Create Room
+                </>
+              )}
             </Button>
           </div>
         </form>
