@@ -8,6 +8,7 @@ import { type CreateRoomInput, createRoomSchema } from "@/schemas/room.schema";
 type CreateRoomActions =
   | {
       success: true;
+      roomId: string;
     }
   | {
       success: false;
@@ -50,7 +51,7 @@ export async function createRoom(
     const passwordEncrypted =
       safeNewRoomData.visibility === "PRIVATE" ? crypto.randomUUID() : null;
 
-    await prisma.room.create({
+    const room = await prisma.room.create({
       data: {
         category: safeNewRoomData.category,
         duration: safeNewRoomData.duration,
@@ -71,6 +72,7 @@ export async function createRoom(
 
     return {
       success: true,
+      roomId: room.id,
     };
   } catch (error) {
     console.error("Failed to create room:", error);

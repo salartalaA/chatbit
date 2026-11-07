@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -30,6 +31,8 @@ import {
 export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
   const [open, setOpen] = useState(false);
 
+  const router = useRouter();
+
   const {
     formState: { errors, isSubmitting },
     watch,
@@ -56,10 +59,10 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
   const durationMinutes = watch("durationMinutes") ?? "15";
 
   const onsubmit = async () => {
-    const result = await createRoom(getValues());
+    const newRoomResult = await createRoom(getValues());
 
-    if (!result.success) {
-      toast.error(result.message);
+    if (!newRoomResult.success) {
+      toast.error(newRoomResult.message);
       return;
     }
 
@@ -67,6 +70,8 @@ export function CreateRoomDialog({ isWide = false }: { isWide?: boolean }) {
 
     setOpen(false);
     reset();
+
+    router.push(`/${newRoomResult.roomId}`);
   };
 
   return (
