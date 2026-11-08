@@ -31,6 +31,7 @@ export default function LoungePage() {
         .emit(
           "room:join",
           roomId,
+          "3682d446-8566-43b0-a8fb-d436130208b8",
           (error: unknown, response: JoinRoomResponse) => {
             if (error) {
               toast.error("Room join request timed out.");
