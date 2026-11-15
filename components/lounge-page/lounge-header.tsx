@@ -1,8 +1,33 @@
 import { Hash } from "lucide-react";
 import { DeleteLoungeDialog } from "@/components/lounge-page/delete-lounge-dialog";
 import { Badge } from "@/components/ui/badge";
+import type { Room } from "@/generated/prisma/client";
+import { useSession } from "@/lib/auth-client";
 
-export default function LoungeHeader() {
+const categoryLabels = {
+  LOFI_AND_CHILL: "Lo-Fi Chill",
+  SYNTHWAVE_AND_RETRO: "Synthwave",
+  DEEP_AMBIENT: "Deep Ambient",
+  GAMING_AND_BEATS: "Gaming & Beats",
+  STUDY_AND_FOCUS: "Study & Focus",
+  LATE_NIGHT_TALK: "Late Night Talk",
+} as const;
+
+export default function LoungeHeader({
+  room,
+}: {
+  room: Omit<Room, "passwordEncrypted">;
+}) {
+  const { data } = useSession();
+
+  if (!room) {
+    return null;
+  }
+
+  const currentUserId = data?.user.id;
+
+  const isOwner = currentUserId === room.ownerId;
+
   return (
     <div className="bg-card text-card-foreground border-border mb-4 h-fit w-full rounded-lg border px-4 py-4 shadow-2xs">
       <div className="flex items-start justify-between gap-3">
@@ -14,25 +39,30 @@ export default function LoungeHeader() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-foreground truncate text-base font-semibold tracking-tight">
-                Midnight Lo-Fi Cafe
+                {room.title}
               </h2>
 
-              <Badge className="text-nano! rounded-md">Your Room</Badge>
+              {isOwner && (
+                <Badge className="text-nano! rounded-md">Your Room</Badge>
+              )}
             </div>
 
-            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-              Cozy beats to relax, study, and chat together. Warm vinyl
-              chillhop.
-            </p>
+            {room.description && (
+              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                {room.description}
+              </p>
+            )}
           </div>
         </div>
 
-        <DeleteLoungeDialog />
+        {isOwner && (
+          <DeleteLoungeDialog roomId={room.id} roomTitle={room.title} />
+        )}
       </div>
 
       <div className="border-border text-muted-foreground mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3 text-xs">
         <Badge className="text-nano! rounded-md" variant="secondary">
-          #Lo-Fi Chill
+          #{categoryLabels[room.category]}
         </Badge>
 
         <span>·</span>
@@ -41,12 +71,15 @@ export default function LoungeHeader() {
         <span>·</span>
         <span>Voice Notes Enabled</span>
 
-        <div className="mt-1 flex items-center gap-1.5">
-          <span className="text-muted-foreground text-micro">#Study</span>
-          <span className="text-muted-foreground text-micro">#Chill</span>
-          <span className="text-muted-foreground text-micro">#Lo-Fi</span>
-          <span className="text-muted-foreground text-micro">#Warm</span>
-        </div>
+        {room.tags.length > 0 && (
+          <div className="mt-1 flex items-center gap-1.5">
+            {room.tags.map((tag) => (
+              <span className="text-muted-foreground text-micro" key={tag}>
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

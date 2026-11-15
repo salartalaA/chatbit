@@ -1,8 +1,9 @@
 "use client";
 
-import { Compass, Globe, LayoutGrid, Radio, Search, Users } from "lucide-react";
+import { Compass, Globe, LayoutGrid, Radio, Search } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-
 import { Input } from "@/components/ui/input";
 import {
   Sidebar,
@@ -15,12 +16,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import type { Room } from "@/generated/prisma/client";
 import { cn } from "@/lib/utils";
 import { CreateRoomDialog } from "./create-room-dialog";
 import { PrivateRoomDialog } from "./private-room-dialog";
 
 type RoomFilter = "ALL" | "PUBLIC" | "PRIVATE" | "TEMP";
 
+type SidebarRoom = Omit<Room, "passwordEncrypted">[];
 const filters: { label: string; value: RoomFilter }[] = [
   { label: "All", value: "ALL" },
   { label: "Public", value: "PUBLIC" },
@@ -28,8 +31,56 @@ const filters: { label: string; value: RoomFilter }[] = [
   { label: "Temp", value: "TEMP" },
 ];
 
-export function AppSidebar() {
+const categoryLabels: Record<Room["category"], string> = {
+  LOFI_AND_CHILL: "Lo-Fi Chill",
+  SYNTHWAVE_AND_RETRO: "Synthwave",
+  DEEP_AMBIENT: "Deep Ambient",
+  GAMING_AND_BEATS: "Gaming & Beats",
+  STUDY_AND_FOCUS: "Study & Focus",
+  LATE_NIGHT_TALK: "Late Night Talk",
+};
+
+export function AppSidebar({ rooms }: { rooms: SidebarRoom }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [activeFilter, setActiveFilter] = useState<RoomFilter>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const filteredRooms = rooms.filter((room) => {
+    const matchesFilter = (() => {
+      switch (activeFilter) {
+        case "PUBLIC":
+          return room.visibility === "PUBLIC";
+
+        case "PRIVATE":
+          return room.visibility === "PRIVATE";
+
+        case "TEMP":
+          return room.duration === "TEMPORARY";
+
+        default:
+          return true;
+      }
+    })();
+
+    const searchableContent = [room.title, categoryLabels[room.category]]
+      .join(" ")
+      .toLowerCase();
+
+    const matchesSearch =
+      !normalizedSearchQuery ||
+      searchableContent.includes(normalizedSearchQuery);
+
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleJoinPublicRoom = (roomId: string) => {
+    sessionStorage.removeItem("pending-room-password");
+    router.push(`/${roomId}`);
+  };
 
   return (
     <Sidebar
@@ -57,15 +108,6 @@ export function AppSidebar() {
             </div>
           </div>
 
-          {/* <Button
-            className="h-7 gap-1 px-2 text-xs"
-            size="sm"
-            variant="outline"
-          >
-            <Plus className="size-3.5" />
-            New
-          </Button> */}
-
           <CreateRoomDialog />
         </div>
 
@@ -75,7 +117,10 @@ export function AppSidebar() {
 
           <Input
             className="border-border bg-background placeholder:text-muted-foreground h-8 pl-8 text-xs! focus-visible:ring-1"
+            onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search lounges..."
+            type="text"
+            value={searchQuery}
           />
         </div>
 
@@ -107,19 +152,25 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  className="border-sidebar-border bg-sidebar-accent h-auto min-h-10 gap-2.5 border px-2 py-2 font-semibold shadow-2xs"
-                  isActive
+                  className={cn(
+                    "h-auto min-h-10 gap-2.5 px-2 py-2 font-semibold shadow-2xs",
+                    pathname === "/" &&
+                      "border-sidebar-border bg-sidebar-accent border"
+                  )}
+                  isActive={pathname === "/"}
                 >
-                  <div className="bg-secondary text-secondary-foreground flex size-7 shrink-0 items-center justify-center rounded-md">
-                    <LayoutGrid className="size-3.5!" />
-                  </div>
+                  <Link className="flex items-center gap-2.5" href="/">
+                    <div className="bg-secondary text-secondary-foreground flex size-7 shrink-0 items-center justify-center rounded-md">
+                      <LayoutGrid className="size-3.5!" />
+                    </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs">Lounge Directory</p>
-                    <p className="text-muted-foreground text-nano truncate font-semibold">
-                      View all sound spaces
-                    </p>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs">Lounge Directory</p>
+                      <p className="text-muted-foreground text-nano truncate font-semibold">
+                        View all sound spaces
+                      </p>
+                    </div>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -130,76 +181,55 @@ export function AppSidebar() {
         <SidebarGroup className="p-2">
           <SidebarGroupLabel className="text-muted-foreground! text-nano h-auto gap-1 px-2 pt-2 pb-1 font-semibold tracking-wider uppercase">
             <Compass className="size-3!" />
-            Rooms (4)
+            Rooms ({filteredRooms.length})
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Room 1 */}
-              <SidebarMenuItem>
-                <SidebarMenuButton className="h-auto min-h-10 items-start gap-2.5 border border-transparent px-2 py-2">
-                  <div className="bg-secondary text-secondary-foreground mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
-                    <Globe className="size-3.5!" />
-                  </div>
+              {filteredRooms.length === 0 && (
+                <p className="text-muted-foreground px-2 py-3 text-xs">
+                  {normalizedSearchQuery
+                    ? "No matching rooms found."
+                    : "No rooms found."}
+                </p>
+              )}
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs">Midnight Lo-Fi Cafe</p>
+              {filteredRooms.map((room) =>
+                room.visibility === "PRIVATE" ? (
+                  <PrivateRoomDialog
+                    categoryLabel={categoryLabels[room.category]}
+                    key={room.id}
+                    room={room}
+                  />
+                ) : (
+                  <SidebarMenuItem key={room.id}>
+                    <SidebarMenuButton
+                      className="h-auto min-h-10 items-start gap-2.5 border border-transparent px-2 py-2"
+                      isActive={pathname === `/${room.id}`}
+                      onClick={() => handleJoinPublicRoom(room.id)}
+                    >
+                      <div className="bg-secondary text-secondary-foreground mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
+                        <Globe className="size-3.5!" />
+                      </div>
 
-                    <div className="text-muted-foreground text-nano mt-0.5 flex items-center gap-1.5 truncate">
-                      <span>Lo-Fi Chill</span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5">
-                        <Users className="size-2.5!" />8
-                      </span>
-                    </div>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs">{room.title}</p>
 
-              {/* Room 2 */}
-              <SidebarMenuItem>
-                <SidebarMenuButton className="h-auto min-h-10 items-start gap-2.5 border border-transparent px-2 py-2">
-                  <div className="bg-secondary text-secondary-foreground mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
-                    <Globe className="size-3.5!" />
-                  </div>
+                        <div className="text-muted-foreground text-nano mt-0.5 flex items-center gap-1.5 truncate">
+                          <span>{categoryLabels[room.category]}</span>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs">Cyberpunk Synthwave 2099</p>
-
-                    <div className="text-muted-foreground text-nano mt-0.5 flex items-center gap-1.5 truncate">
-                      <span>Synthwave</span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5">
-                        <Users className="size-2.5!" />6
-                      </span>
-                    </div>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Room 3 */}
-              <SidebarMenuItem>
-                <SidebarMenuButton className="h-auto min-h-10 items-start gap-2.5 border border-transparent px-2 py-2">
-                  <div className="bg-secondary text-secondary-foreground mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
-                    <Globe className="size-3.5!" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs">Deep Space Ambient Oasis</p>
-
-                    <div className="text-muted-foreground text-nano mt-0.5 flex items-center gap-1.5 truncate">
-                      <span>Ambient</span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5">
-                        <Users className="size-2.5!" />4
-                      </span>
-                    </div>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Room 4 */}
-              <PrivateRoomDialog />
+                          {room.duration === "TEMPORARY" && (
+                            <>
+                              <span>·</span>
+                              <span>Temp</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

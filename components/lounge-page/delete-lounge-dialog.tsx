@@ -1,7 +1,9 @@
 "use client";
 
-import { Trash2, TriangleAlert } from "lucide-react";
+import { Loader2, Trash2, TriangleAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { deleteMyRoom } from "@/actions/room";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,8 +16,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export function DeleteLoungeDialog() {
+export function DeleteLoungeDialog({
+  roomTitle,
+  roomId,
+}: {
+  roomTitle: string;
+  roomId: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const router = useRouter();
+
+  const handleDeleteRoom = async () => {
+    setIsDeleting(true);
+
+    await deleteMyRoom(roomId);
+
+    router.push("/");
+  };
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -42,7 +61,7 @@ export function DeleteLoungeDialog() {
               </DialogTitle>
 
               <DialogDescription className="text-xs leading-relaxed">
-                Are you sure you want to delete "Midnight Lo-Fi Cafe"? This will
+                Are you sure you want to delete "{roomTitle}"? This will
                 permanently close the lounge for all members.
               </DialogDescription>
             </div>
@@ -64,6 +83,7 @@ export function DeleteLoungeDialog() {
               render={() => (
                 <Button
                   className="h-8 gap-1.5 px-3 text-xs"
+                  disabled={isDeleting}
                   onClick={() => setOpen(false)}
                   size="sm"
                   variant="outline"
@@ -75,10 +95,16 @@ export function DeleteLoungeDialog() {
 
             <Button
               className="h-8 gap-1.5 px-3 text-xs font-semibold"
+              disabled={isDeleting}
+              onClick={handleDeleteRoom}
               size="sm"
               variant="destructive"
             >
-              Yes, Delete Lounge
+              {isDeleting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                "Yes, Delete Lounge"
+              )}
             </Button>
           </DialogFooter>
         </div>
