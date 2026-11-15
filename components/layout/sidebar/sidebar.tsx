@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Compass,
-  Globe,
-  LayoutGrid,
-  Lock,
-  Radio,
-  Search,
-  Users,
-} from "lucide-react";
+import { Compass, Globe, LayoutGrid, Radio, Search, Users } from "lucide-react";
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -25,6 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { CreateRoomDialog } from "./create-room-dialog";
+import { PrivateRoomDialog } from "./private-room-dialog";
 
 type RoomFilter = "ALL" | "PUBLIC" | "PRIVATE" | "TEMP";
 
@@ -206,33 +199,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               {/* Room 4 */}
-              <SidebarMenuItem>
-                <SidebarMenuButton className="h-auto min-h-10 items-start gap-2.5 border border-transparent px-2 py-2">
-                  <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-400">
-                    <Lock className="size-3.5!" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="truncate text-xs">
-                        VIP Private Studio Lounge
-                      </p>
-
-                      <span className="text-nano shrink-0 font-semibold text-purple-400">
-                        Locked
-                      </span>
-                    </div>
-
-                    <div className="text-muted-foreground text-nano mt-0.5 flex items-center gap-1.5 truncate">
-                      <span>Exclusive</span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5">
-                        <Users className="size-2.5!" />3
-                      </span>
-                    </div>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <PrivateRoomDialog />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

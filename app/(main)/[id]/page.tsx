@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import ChatInput from "@/components/lounge-page/chat-input";
 import ChatItem from "@/components/lounge-page/chat-items";
@@ -23,51 +23,104 @@ type JoinRoomResponse =
 
 export default function LoungePage() {
   const { id: roomId } = useParams<{ id: string }>();
+  const router = useRouter();
 
+  const [pendingPassword, setPendingPassword] = useState<string | null>(null);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [isJoined, setIsJoined] = useState(false);
+
+  const hasConsumedAccess = useRef(false);
+  const hasAttemptedJoin = useRef(false);
+
+  // Consume the one-time password from sessionStorage.
   useEffect(() => {
+    // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+    if (hasConsumedAccess.current) {
+      return;
+    }
+
+    hasConsumedAccess.current = true;
+
+    const password = sessionStorage.getItem("pending-room-password");
+
+    sessionStorage.removeItem("pending-room-password");
+
+    setPendingPassword(password);
+    setIsCheckingAccess(false);
+  }, []);
+
+  // Connect to Socket.IO and attempt to join the room.
+  useEffect(() => {
+    if (isCheckingAccess) {
+      return;
+    }
+
+    const handleConnectError = (error: Error) => {
+      toast.error(
+        error.message === "UNAUTHORIZED"
+          ? "You must log in to join this room."
+          : "Unable to connect to the server."
+      );
+
+      router.replace("/");
+    };
+
     const handleConnect = () => {
+      // Prevent duplicate join attempts, including Socket.IO reconnections.
+
+      // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+      if (hasAttemptedJoin.current) {
+        return;
+      }
+
+      hasAttemptedJoin.current = true;
+
       socket
         .timeout(5000)
         .emit(
           "room:join",
           roomId,
-          "3682d446-8566-43b0-a8fb-d436130208b8",
-          (error: unknown, response: JoinRoomResponse) => {
+          pendingPassword ?? "",
+          (error: Error | null, response: JoinRoomResponse) => {
             if (error) {
-              toast.error("Room join request timed out.");
+              toast.error("Unable to join room.");
+              router.replace("/");
               return;
             }
 
             if (!response.success) {
               toast.error(response.message);
+              router.replace("/");
               return;
             }
 
+            setIsJoined(true);
             toast.success("Joined room successfully");
           }
         );
     };
 
-    const handleConnectError = (error: Error) => {
-      if (error.message === "UNAUTHORIZED") {
-        toast.error("You must log in to join this room.");
-        return;
-      }
-
-      toast.error("Unable to connect to the server.");
-    };
-
-    socket.on("connect", handleConnect);
     socket.on("connect_error", handleConnectError);
+    socket.on("connect", handleConnect);
 
     socket.connect();
 
     return () => {
-      socket.off("connect", handleConnect);
       socket.off("connect_error", handleConnectError);
+      socket.off("connect", handleConnect);
       socket.disconnect();
     };
-  }, [roomId]);
+  }, [isCheckingAccess, pendingPassword, roomId, router]);
+
+  if (isCheckingAccess || !isJoined) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <p className="text-muted-foreground text-sm">
+          {isCheckingAccess ? "Checking access..." : "Joining room..."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
