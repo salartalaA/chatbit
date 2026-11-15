@@ -1,43 +1,44 @@
 model Room {
-    id                String         @id @default(cuid())
-    title              String
-    description       String?
-    visibility        RoomVisibility
-    duration          RoomDuration
-    category          RoomCategory
-    passwordEncrypted String?
-    tags              String[]
-    expiresAt         DateTime?
+  id                String         @id @default(cuid())
+  title             String
+  description       String?
+  visibility        RoomVisibility
+  duration          RoomDuration
+  category          RoomCategory
+  passwordEncrypted String?
+  tags              String[]
+  expiresAt         DateTime?
 
-    ownerId String
-    owner   User   @relation(name: "RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User   @relation(name: "RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-    djs User[] @relation("RoomDJs")
+  djs User[] @relation("RoomDJs")
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
 
-    @@index([ownerId])
-    @@index([visibility, createdAt])
-    @@index([category])
-    @@index([expiresAt])
+  @@index([ownerId])
+  @@index([visibility, createdAt])
+  @@index([category])
+  @@index([expiresAt])
 }
 
 enum RoomVisibility {
-    PUBLIC
-    PRIVATE
+  PUBLIC
+  PRIVATE
 }
 
 enum RoomDuration {
-    PERMANENT
-    TEMPORARY
+  PERMANENT
+  TEMPORARY
 }
 
 enum RoomCategory {
-    LOFI_AND_CHILL
-    SYNTHWAVE_AND_RETRO
-    DEEP_AMBIENT
-    GAMING_AND_BEATS
-    STUDY_AND_FOCUS
-    LATE_NIGHT_TALK
+  LOFI_AND_CHILL
+  SYNTHWAVE_AND_RETRO
+  DEEP_AMBIENT
+  GAMING_AND_BEATS
+  STUDY_AND_FOCUS
+  LATE_NIGHT_TALK
 }
