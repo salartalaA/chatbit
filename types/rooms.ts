@@ -56,3 +56,8 @@ export type JoinRoomResponse =
       message: string;
       roomId: string;
     };
+
+export interface TypingUser {
+  id: string;
+  name: string;
+}

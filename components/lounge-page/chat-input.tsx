@@ -1,7 +1,7 @@
 "use client";
 
 import { Mic, Send, Smile } from "lucide-react";
-import { type SubmitEvent, useState } from "react";
+import { type SubmitEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlaylistDialog } from "@/components/layout/footer/playlist-dialog";
 import { Input } from "@/components/ui/input";
@@ -28,10 +28,53 @@ const emojis = [
   "💫",
 ];
 
+const TYPING_STOP_DELAY = 2000;
+
 export default function ChatInput({ roomId }: { roomId: string }) {
   const [msg, setMsg] = useState("");
 
+  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTyping = useRef(false);
+
   const trimmedMsg = msg.trim();
+
+  const stopTyping = () => {
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+      typingTimeout.current = null;
+    }
+
+    // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+    if (!isTyping.current) {
+      return;
+    }
+
+    isTyping.current = false;
+    socket.emit("typing:stop", roomId);
+  };
+
+  const handleMessageChange = (value: string) => {
+    setMsg(value);
+
+    if (value.trim() === "") {
+      stopTyping();
+      return;
+    }
+
+    // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+    if (!isTyping.current) {
+      isTyping.current = true;
+      socket.emit("typing:start", roomId);
+    }
+
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+
+    typingTimeout.current = setTimeout(() => {
+      stopTyping();
+    }, TYPING_STOP_DELAY);
+  };
 
   const handleSendMessage = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,6 +83,7 @@ export default function ChatInput({ roomId }: { roomId: string }) {
       return;
     }
 
+    stopTyping();
     setMsg("");
 
     socket.emit(
@@ -73,6 +117,20 @@ export default function ChatInput({ roomId }: { roomId: string }) {
     );
   };
 
+  useEffect(
+    () => () => {
+      if (typingTimeout.current) {
+        clearTimeout(typingTimeout.current);
+      }
+
+      // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+      if (isTyping.current) {
+        socket.emit("typing:stop", roomId);
+      }
+    },
+    [roomId]
+  );
+
   return (
     <div className="border-border bg-card relative border-t p-3">
       <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
@@ -80,7 +138,7 @@ export default function ChatInput({ roomId }: { roomId: string }) {
           <Input
             autoComplete="off"
             className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border py-2 pr-20 pl-10 text-sm focus:ring-1 focus:outline-none"
-            onChange={(e) => setMsg(e.target.value)}
+            onChange={(e) => handleMessageChange(e.target.value)}
             placeholder="Message #Midnight Lo-Fi Cafe..."
             type="text"
             value={msg}

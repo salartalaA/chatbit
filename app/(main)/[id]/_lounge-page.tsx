@@ -13,11 +13,32 @@ import type {
   JoinRoomResponse,
   MessageDTO,
   MessageHistoryResponse,
+  TypingUser,
 } from "@/types/rooms";
 
 interface LoungePageProps {
   currentUserId: string;
   room: Omit<Room, "passwordEncrypted">;
+}
+
+function getTypingText(users: TypingUser[]) {
+  if (users.length === 0) {
+    return "";
+  }
+
+  if (users.length === 1) {
+    return `${users[0].name} is typing...`;
+  }
+
+  if (users.length === 2) {
+    return `${users[0].name} and ${users[1].name} are typing...`;
+  }
+
+  if (users.length === 3) {
+    return `${users[0].name}, ${users[1].name} and ${users[2].name} are typing...`;
+  }
+
+  return `${users.length} people are typing...`;
 }
 
 export default function LoungePage({ room, currentUserId }: LoungePageProps) {
@@ -28,6 +49,7 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
   const [messages, setMessages] = useState<MessageDTO[]>([]);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
 
   const hasConsumedAccess = useRef(false);
   const hasAttemptedJoin = useRef(false);
@@ -75,6 +97,10 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
 
         return [...previousMessages, message];
       });
+    };
+
+    const handleTypingUpdate = (payload: { users: TypingUser[] }) => {
+      setTypingUsers(payload.users.filter((user) => user.id !== currentUserId));
     };
 
     const handleConnect = () => {
@@ -131,6 +157,7 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
     socket.on("connect_error", handleConnectError);
     socket.on("connect", handleConnect);
     socket.on("message:new", handleNewMessage);
+    socket.on("typing:update", handleTypingUpdate);
 
     socket.connect();
 
@@ -138,9 +165,10 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       socket.off("connect_error", handleConnectError);
       socket.off("connect", handleConnect);
       socket.off("message:new", handleNewMessage);
+      socket.off("typing:update", handleTypingUpdate);
       socket.disconnect();
     };
-  }, [isCheckingAccess, pendingPassword, roomId, router]);
+  }, [isCheckingAccess, pendingPassword, roomId, router, currentUserId]);
 
   if (isCheckingAccess || !isJoined) {
     return (
@@ -152,6 +180,8 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
     );
   }
 
+  const typingText = getTypingText(typingUsers);
+
   return (
     <>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -160,6 +190,12 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
 
           <ChatItem currentUserId={currentUserId} messages={messages} />
         </div>
+
+        {typingText && (
+          <div className="text-muted-foreground min-h-6 px-4 pb-1 text-xs">
+            {typingText}
+          </div>
+        )}
 
         <ChatInput roomId={roomId} />
       </div>
