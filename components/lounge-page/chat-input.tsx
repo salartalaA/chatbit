@@ -1,6 +1,8 @@
 "use client";
 
 import { Mic, Send, Smile } from "lucide-react";
+import { type SubmitEvent, useState } from "react";
+import { toast } from "sonner";
 import { PlaylistDialog } from "@/components/layout/footer/playlist-dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,6 +10,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { socket } from "@/lib/socket";
+import type { SendMessageResponse } from "@/types/rooms";
 
 const emojis = [
   "✨",
@@ -24,16 +28,62 @@ const emojis = [
   "💫",
 ];
 
-export default function ChatInput() {
+export default function ChatInput({ roomId }: { roomId: string }) {
+  const [msg, setMsg] = useState("");
+
+  const trimmedMsg = msg.trim();
+
+  const handleSendMessage = (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (trimmedMsg === "") {
+      return;
+    }
+
+    setMsg("");
+
+    socket.emit(
+      "message:send",
+      { roomId, content: msg },
+      (response: SendMessageResponse) => {
+        if (response.success) {
+          console.log("Message sent successfully");
+          return;
+        }
+
+        switch (response.code) {
+          case "INVALID_REQUEST":
+            console.error("Invalid message:", response.message);
+            break;
+
+          case "NOT_IN_ROOM":
+            console.error("You are not a member of this room");
+            break;
+
+          case "MESSAGE_FAILED":
+            toast.error("Failed to send message");
+            console.error("Failed to send message:", response.message);
+            break;
+
+          default:
+            console.error("An unexpected error occurred");
+            break;
+        }
+      }
+    );
+  };
+
   return (
     <div className="border-border bg-card relative border-t p-3">
-      <form className="flex items-center gap-2">
+      <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
         <div className="relative flex flex-1 items-center">
           <Input
             autoComplete="off"
             className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border py-2 pr-20 pl-10 text-sm focus:ring-1 focus:outline-none"
+            onChange={(e) => setMsg(e.target.value)}
             placeholder="Message #Midnight Lo-Fi Cafe..."
             type="text"
+            value={msg}
           />
 
           <Popover>
@@ -84,7 +134,7 @@ export default function ChatInput() {
 
         <button
           className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-2xs transition-colors select-none disabled:pointer-events-none disabled:opacity-50"
-          disabled
+          disabled={!trimmedMsg || trimmedMsg.length >= 5000}
           type="submit"
         >
           <Send className="mr-1 h-3.5 w-3.5" />

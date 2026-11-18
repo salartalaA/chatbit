@@ -9,35 +9,29 @@ import LoungeHeader from "@/components/lounge-page/lounge-header";
 import { MembersSidebar } from "@/components/lounge-page/members-sidebar";
 import type { Room } from "@/generated/prisma/client";
 import { socket } from "@/lib/socket";
+import type {
+  JoinRoomResponse,
+  MessageDTO,
+  MessageHistoryResponse,
+} from "@/types/rooms";
 
-type JoinRoomResponse =
-  | {
-      success: false;
-      message: string;
-      code: "ROOM_NOT_FOUND" | "FORBIDDEN" | "AUTHORIZATION_FAILED";
-    }
-  | {
-      success: true;
-      message: string;
-      roomId: string;
-    };
-
-export default function LoungePage({
-  room,
-}: {
+interface LoungePageProps {
+  currentUserId: string;
   room: Omit<Room, "passwordEncrypted">;
-}) {
+}
+
+export default function LoungePage({ room, currentUserId }: LoungePageProps) {
   const { id: roomId } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [pendingPassword, setPendingPassword] = useState<string | null>(null);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
+  const [messages, setMessages] = useState<MessageDTO[]>([]);
 
   const hasConsumedAccess = useRef(false);
   const hasAttemptedJoin = useRef(false);
 
-  // Consume the one-time password from sessionStorage.
   useEffect(() => {
     // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
     if (hasConsumedAccess.current) {
@@ -54,7 +48,6 @@ export default function LoungePage({
     setIsCheckingAccess(false);
   }, []);
 
-  // Connect to Socket.IO and attempt to join the room.
   useEffect(() => {
     if (isCheckingAccess) {
       return;
@@ -70,9 +63,21 @@ export default function LoungePage({
       router.replace("/");
     };
 
-    const handleConnect = () => {
-      // Prevent duplicate join attempts, including Socket.IO reconnections.
+    const handleNewMessage = (message: MessageDTO) => {
+      if (message.roomId !== roomId) {
+        return;
+      }
 
+      setMessages((previousMessages) => {
+        if (previousMessages.some((item) => item.id === message.id)) {
+          return previousMessages;
+        }
+
+        return [...previousMessages, message];
+      });
+    };
+
+    const handleConnect = () => {
       // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
       if (hasAttemptedJoin.current) {
         return;
@@ -86,18 +91,36 @@ export default function LoungePage({
           "room:join",
           roomId,
           pendingPassword ?? "",
-          (error: Error | null, response: JoinRoomResponse) => {
-            if (error) {
+          (joinError: Error | null, joinResponse: JoinRoomResponse) => {
+            if (joinError) {
               toast.error("Unable to join room.");
               router.replace("/");
               return;
             }
 
-            if (!response.success) {
-              toast.error(response.message);
+            if (!joinResponse.success) {
+              toast.error(joinResponse.message);
               router.replace("/");
               return;
             }
+
+            socket
+              .timeout(5000)
+              .emit(
+                "message:history",
+                roomId,
+                (
+                  prevMsgsError: Error | null,
+                  prevMsgsResponse: MessageHistoryResponse
+                ) => {
+                  if (prevMsgsError || !prevMsgsResponse.success) {
+                    toast.error("Unable to load message history.");
+                    return;
+                  }
+
+                  setMessages(prevMsgsResponse.messages);
+                }
+              );
 
             setIsJoined(true);
             toast.success("Joined room successfully");
@@ -107,12 +130,14 @@ export default function LoungePage({
 
     socket.on("connect_error", handleConnectError);
     socket.on("connect", handleConnect);
+    socket.on("message:new", handleNewMessage);
 
     socket.connect();
 
     return () => {
       socket.off("connect_error", handleConnectError);
       socket.off("connect", handleConnect);
+      socket.off("message:new", handleNewMessage);
       socket.disconnect();
     };
   }, [isCheckingAccess, pendingPassword, roomId, router]);
@@ -132,10 +157,11 @@ export default function LoungePage({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="bg-background relative m-4 flex min-h-0 flex-1 flex-col">
           <LoungeHeader room={room} />
-          <ChatItem />
+
+          <ChatItem currentUserId={currentUserId} messages={messages} />
         </div>
 
-        <ChatInput />
+        <ChatInput roomId={roomId} />
       </div>
 
       <MembersSidebar />
