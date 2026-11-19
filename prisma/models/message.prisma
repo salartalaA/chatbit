@@ -1,6 +1,7 @@
 model Message {
-  id      String @id @default(cuid())
-  content String
+  id        String  @id @default(cuid())
+  content   String
+  isDeleted Boolean @default(false)
 
   roomId String
   room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
