@@ -12,7 +12,7 @@ import { socket } from "@/lib/socket";
 import type {
   JoinRoomResponse,
   MessageDTO,
-  MessageHistoryResponse,
+  RoomMember,
   TypingUser,
 } from "@/types/rooms";
 
@@ -50,6 +50,7 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
   const [isJoined, setIsJoined] = useState(false);
   const [messages, setMessages] = useState<MessageDTO[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [members, setMembers] = useState<RoomMember[]>([]);
 
   const hasConsumedAccess = useRef(false);
   const hasAttemptedJoin = useRef(false);
@@ -99,8 +100,26 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       });
     };
 
+    const handleJoinedUser = (member: RoomMember) => {
+      setMembers((prev) => {
+        const existingUser = prev.some(
+          (existingMember) => existingMember.id === member.id
+        );
+
+        if (existingUser) {
+          return prev;
+        }
+
+        return [...prev, member];
+      });
+    };
+
     const handleTypingUpdate = (payload: { users: TypingUser[] }) => {
       setTypingUsers(payload.users.filter((user) => user.id !== currentUserId));
+    };
+
+    const handleLeftUser = ({ userId }: { userId: string }) => {
+      setMembers((prev) => prev.filter((member) => member.id !== userId));
     };
 
     const handleConnect = () => {
@@ -130,23 +149,8 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
               return;
             }
 
-            socket
-              .timeout(5000)
-              .emit(
-                "message:history",
-                roomId,
-                (
-                  prevMsgsError: Error | null,
-                  prevMsgsResponse: MessageHistoryResponse
-                ) => {
-                  if (prevMsgsError || !prevMsgsResponse.success) {
-                    toast.error("Unable to load message history.");
-                    return;
-                  }
-
-                  setMessages(prevMsgsResponse.messages);
-                }
-              );
+            setMembers(joinResponse.members);
+            setMessages(joinResponse.messages);
 
             setIsJoined(true);
             toast.success("Joined room successfully");
@@ -158,6 +162,8 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
     socket.on("connect", handleConnect);
     socket.on("message:new", handleNewMessage);
     socket.on("typing:update", handleTypingUpdate);
+    socket.on("member:joined", handleJoinedUser);
+    socket.on("member:left", handleLeftUser);
 
     socket.connect();
 
@@ -166,6 +172,8 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       socket.off("connect", handleConnect);
       socket.off("message:new", handleNewMessage);
       socket.off("typing:update", handleTypingUpdate);
+      socket.off("member:joined", handleJoinedUser);
+      socket.off("member:left", handleLeftUser);
       socket.disconnect();
     };
   }, [isCheckingAccess, pendingPassword, roomId, router, currentUserId]);
@@ -200,7 +208,11 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
         <ChatInput roomId={roomId} />
       </div>
 
-      <MembersSidebar />
+      <MembersSidebar
+        currentUserId={currentUserId}
+        members={members}
+        ownerId={room.ownerId}
+      />
     </>
   );
 }

@@ -22,16 +22,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signOut } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
-
-type Status = "ONLINE" | "LISTENING" | "AWAY";
-
-const statuses: Status[] = ["ONLINE", "LISTENING", "AWAY"];
 
 export function ProfileDialog() {
   const [open, setOpen] = useState(false);
-
-  const [status, setStatus] = useState<Status>("LISTENING");
 
   const router = useRouter();
 
@@ -75,14 +68,13 @@ export function ProfileDialog() {
             </DialogTitle>
 
             <DialogDescription className="text-muted-foreground text-xs leading-relaxed">
-              Manage your sound persona and lounge status.
+              Manage your profile information.
             </DialogDescription>
           </div>
         </DialogHeader>
 
         <div className="mt-4">
           <form className="space-y-4">
-            {/* Display Name */}
             <div className="space-y-1">
               <Label
                 className="text-foreground text-xs font-medium"
@@ -100,50 +92,6 @@ export function ProfileDialog() {
               />
             </div>
 
-            {/* Current Status */}
-            <div className="space-y-1">
-              <Label className="text-foreground text-xs font-medium">
-                Current Status
-              </Label>
-
-              <div className="grid grid-cols-3 gap-2">
-                {statuses.map((item) => (
-                  <button
-                    className={cn(
-                      "cursor-pointer rounded-md border py-1.5 text-xs font-medium capitalize transition-colors",
-                      status === item
-                        ? "border-primary bg-primary/10 text-foreground font-semibold"
-                        : "border-border text-muted-foreground hover:bg-muted"
-                    )}
-                    key={item}
-                    onClick={() => setStatus(item)}
-                    type="button"
-                  >
-                    {item.toLowerCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Bio */}
-            <div className="space-y-1">
-              <Label
-                className="text-foreground text-xs font-medium"
-                htmlFor="bio"
-              >
-                Custom Bio
-              </Label>
-
-              <Input
-                className="bg-background border-border text-foreground focus-visible:ring-ring h-auto rounded-md border px-3 py-1.5 text-sm shadow-none focus-visible:ring-1"
-                defaultValue="Enjoying good beats and friendly conversations."
-                id="bio"
-                placeholder="e.g. Ambient explorer & synth crafter"
-                type="text"
-              />
-            </div>
-
-            {/* Actions */}
             <div className="border-border flex items-center justify-between border-t pt-2">
               <Button
                 className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 gap-1.5 rounded-md text-xs"
@@ -154,6 +102,7 @@ export function ProfileDialog() {
                 <LogOut className="h-3.5 w-3.5" />
                 Sign Out
               </Button>
+
               <div className="flex gap-2">
                 <DialogClose
                   render={() => (
