@@ -1,8 +1,8 @@
 "use client";
 
 import { Loader2, Trash2, TriangleAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { deleteMyRoom } from "@/actions/room";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { socket } from "@/lib/socket";
 
 export function DeleteLoungeDialog({
   roomTitle,
@@ -26,14 +27,17 @@ export function DeleteLoungeDialog({
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const router = useRouter();
-
   const handleDeleteRoom = async () => {
     setIsDeleting(true);
 
-    await deleteMyRoom(roomId);
+    const result = await deleteMyRoom(roomId);
 
-    router.push("/");
+    if (!result.success) {
+      toast.error(result.message);
+      return;
+    }
+
+    socket.emit("room:deleted");
   };
 
   return (

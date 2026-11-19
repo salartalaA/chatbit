@@ -158,12 +158,17 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
         );
     };
 
+    const handleDeleteRoom = () => {
+      router.push("/");
+    };
+
     socket.on("connect_error", handleConnectError);
     socket.on("connect", handleConnect);
     socket.on("message:new", handleNewMessage);
     socket.on("typing:update", handleTypingUpdate);
     socket.on("member:joined", handleJoinedUser);
     socket.on("member:left", handleLeftUser);
+    socket.on("room:deleted", handleDeleteRoom);
 
     socket.connect();
 
