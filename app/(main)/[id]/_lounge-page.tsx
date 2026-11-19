@@ -122,6 +122,36 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       setMembers((prev) => prev.filter((member) => member.id !== userId));
     };
 
+    const handleNameUpdated = (payload: { userId: string; name: string }) => {
+      setMembers((prev) =>
+        prev.map((member) =>
+          member.id === payload.userId
+            ? { ...member, name: payload.name }
+            : member
+        )
+      );
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.sender.id === payload.userId
+            ? {
+                ...message,
+                sender: {
+                  ...message.sender,
+                  name: payload.name,
+                },
+              }
+            : message
+        )
+      );
+
+      setTypingUsers((prev) =>
+        prev.map((user) =>
+          user.id === payload.userId ? { ...user, name: payload.name } : user
+        )
+      );
+    };
+
     const handleConnect = () => {
       // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
       if (hasAttemptedJoin.current) {
@@ -168,6 +198,7 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
     socket.on("typing:update", handleTypingUpdate);
     socket.on("member:joined", handleJoinedUser);
     socket.on("member:left", handleLeftUser);
+    socket.on("user:name-updated", handleNameUpdated);
     socket.on("room:deleted", handleDeleteRoom);
 
     socket.connect();
@@ -179,6 +210,8 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       socket.off("typing:update", handleTypingUpdate);
       socket.off("member:joined", handleJoinedUser);
       socket.off("member:left", handleLeftUser);
+      socket.off("user:name-updated", handleNameUpdated);
+      socket.off("room:deleted", handleDeleteRoom);
       socket.disconnect();
     };
   }, [isCheckingAccess, pendingPassword, roomId, router, currentUserId]);

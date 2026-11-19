@@ -62,3 +62,15 @@ export type JoinRoomResponse =
       members: RoomMember[];
       messages: MessageDTO[];
     };
+
+export type UpdateUsernameResponse =
+  | {
+      success: false;
+      message: string;
+      code: "UNAUTHORIZED" | "INVALID_NAME" | "UPDATE_FAILED";
+    }
+  | {
+      success: true;
+      message: string;
+      name: string;
+    };

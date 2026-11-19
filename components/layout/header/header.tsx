@@ -1,9 +1,21 @@
 import { LayoutGrid } from "lucide-react";
+import { headers } from "next/headers";
 import Invite from "@/components/layout/header/invite";
 import { ProfileDialog } from "@/components/layout/header/profile-dialog";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { auth } from "@/lib/auth";
 
-export default function Header() {
+export default async function Header() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    return;
+  }
+
+  const username = session.user.name;
+
   return (
     <div className="border-border bg-card text-card-foreground z-20 flex h-13 shrink-0 items-center justify-between border-b px-4">
       <div className="flex items-center gap-2">
@@ -23,7 +35,7 @@ export default function Header() {
       <div className="flex items-center gap-2">
         <Invite />
 
-        <ProfileDialog />
+        <ProfileDialog currentUsername={username} />
       </div>
     </div>
   );
