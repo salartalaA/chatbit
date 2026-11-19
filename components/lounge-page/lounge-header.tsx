@@ -2,6 +2,7 @@ import { Hash } from "lucide-react";
 import { DeleteLoungeDialog } from "@/components/lounge-page/delete-lounge-dialog";
 import { Badge } from "@/components/ui/badge";
 import type { Room } from "@/generated/prisma/client";
+import { useRoomCountdown } from "@/hooks/use-room-countdown";
 import { useSession } from "@/lib/auth-client";
 
 const categoryLabels = {
@@ -13,12 +14,10 @@ const categoryLabels = {
   LATE_NIGHT_TALK: "Late Night Talk",
 } as const;
 
-export default function LoungeHeader({
-  room,
-}: {
-  room: Omit<Room, "passwordEncrypted">;
-}) {
+export default function LoungeHeader({ room }: { room: Room }) {
   const { data } = useSession();
+
+  const formattedTime = useRoomCountdown(room.expiresAt);
 
   if (!room) {
     return null;
@@ -79,6 +78,20 @@ export default function LoungeHeader({
               </span>
             ))}
           </div>
+        )}
+
+        {formattedTime && room.duration === "TEMPORARY" && (
+          <div className="ms-auto flex items-center gap-2">
+            <Badge variant={"secondary"}>Temporary Room</Badge>
+
+            <Badge variant={"secondary"}>Expires At {formattedTime}</Badge>
+          </div>
+        )}
+
+        {room.visibility === "PRIVATE" && (
+          <Badge variant={"destructive"}>
+            Room password: {room.passwordEncrypted}
+          </Badge>
         )}
       </div>
     </div>

@@ -3,11 +3,13 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { expireRoom } from "@/actions/room";
 import ChatInput from "@/components/lounge-page/chat-input";
 import ChatItem from "@/components/lounge-page/chat-items";
 import LoungeHeader from "@/components/lounge-page/lounge-header";
 import { MembersSidebar } from "@/components/lounge-page/members-sidebar";
 import type { Room } from "@/generated/prisma/client";
+import { useRoomCountdown } from "@/hooks/use-room-countdown";
 import { socket } from "@/lib/socket";
 import type {
   JoinRoomResponse,
@@ -18,7 +20,7 @@ import type {
 
 interface LoungePageProps {
   currentUserId: string;
-  room: Omit<Room, "passwordEncrypted">;
+  room: Room;
 }
 
 function getTypingText(users: TypingUser[]) {
@@ -54,6 +56,36 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
 
   const hasConsumedAccess = useRef(false);
   const hasAttemptedJoin = useRef(false);
+
+  const formattedTime = useRoomCountdown(room.expiresAt);
+  const hasExpired = useRef(false);
+
+  useEffect(() => {
+    if (formattedTime !== "00:00:00" || !isJoined) {
+      return;
+    }
+
+    // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+    if (hasExpired.current) {
+      return;
+    }
+
+    hasExpired.current = true;
+
+    const handleExpiration = async () => {
+      try {
+        const result = await expireRoom(roomId);
+
+        if (result.success) {
+          socket.emit("room:expire", roomId);
+        }
+      } catch {
+        hasExpired.current = false;
+      }
+    };
+
+    handleExpiration();
+  }, [formattedTime, isJoined, roomId]);
 
   useEffect(() => {
     // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
@@ -192,6 +224,10 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       router.push("/");
     };
 
+    const handleRoomExpired = () => {
+      router.replace("/");
+    };
+
     socket.on("connect_error", handleConnectError);
     socket.on("connect", handleConnect);
     socket.on("message:new", handleNewMessage);
@@ -200,6 +236,7 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
     socket.on("member:left", handleLeftUser);
     socket.on("user:name-updated", handleNameUpdated);
     socket.on("room:deleted", handleDeleteRoom);
+    socket.on("room:expired", handleRoomExpired);
 
     socket.connect();
 
@@ -212,6 +249,8 @@ export default function LoungePage({ room, currentUserId }: LoungePageProps) {
       socket.off("member:left", handleLeftUser);
       socket.off("user:name-updated", handleNameUpdated);
       socket.off("room:deleted", handleDeleteRoom);
+      socket.off("room:expired", handleRoomExpired);
+
       socket.disconnect();
     };
   }, [isCheckingAccess, pendingPassword, roomId, router, currentUserId]);

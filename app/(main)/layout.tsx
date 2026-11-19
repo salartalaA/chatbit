@@ -1,4 +1,4 @@
-import { getRooms } from "@/actions/room";
+import { deleteExpiredRooms, getRooms } from "@/actions/room";
 import MusicPlayer from "@/components/layout/footer/music-player";
 import Header from "@/components/layout/header/header";
 import { AppSidebar } from "@/components/layout/sidebar/sidebar";
@@ -9,6 +9,8 @@ export default async function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await deleteExpiredRooms();
+
   const result = await getRooms();
 
   const rooms = result.success ? result.rooms : [];

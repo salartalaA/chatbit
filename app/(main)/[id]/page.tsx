@@ -25,9 +25,6 @@ export default async function Page({
     where: {
       id: roomId,
     },
-    omit: {
-      passwordEncrypted: true,
-    },
   });
 
   if (!room) {

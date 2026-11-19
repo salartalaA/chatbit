@@ -242,3 +242,32 @@ export async function deleteMyRoom(roomId: string) {
     };
   }
 }
+
+export async function deleteExpiredRooms() {
+  await prisma.room.deleteMany({
+    where: {
+      expiresAt: {
+        lte: new Date(),
+      },
+    },
+  });
+
+  return {
+    success: true,
+  };
+}
+
+export async function expireRoom(roomId: string) {
+  const result = await prisma.room.deleteMany({
+    where: {
+      id: roomId,
+      expiresAt: {
+        lte: new Date(),
+      },
+    },
+  });
+
+  return {
+    success: result.count > 0,
+  };
+}
