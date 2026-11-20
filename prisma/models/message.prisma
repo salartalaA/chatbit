@@ -1,7 +1,11 @@
 model Message {
   id        String  @id @default(cuid())
-  content   String
+  content   String?
   isDeleted Boolean @default(false)
+
+  type     MessageType @default(TEXT)
+  audioKey String?
+  duration Int?
 
   roomId String
   room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
@@ -13,4 +17,9 @@ model Message {
 
   @@index([roomId, createdAt])
   @@index([senderId])
+}
+
+enum MessageType {
+  TEXT
+  VOICE
 }
