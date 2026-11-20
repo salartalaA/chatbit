@@ -1,6 +1,6 @@
 "use client";
 
-import { Compass, Globe, LayoutGrid, Radio, Search } from "lucide-react";
+import { Clock, Compass, Globe, LayoutGrid, Radio, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { Room } from "@/generated/prisma/client";
+import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { CreateRoomDialog } from "./create-room-dialog";
 import { PrivateRoomDialog } from "./private-room-dialog";
@@ -43,6 +44,8 @@ const categoryLabels: Record<Room["category"], string> = {
 export function AppSidebar({ rooms }: { rooms: SidebarRoom }) {
   const router = useRouter();
   const pathname = usePathname();
+
+  const currentUserId = useSession().data?.user.id;
 
   const [activeFilter, setActiveFilter] = useState<RoomFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -194,8 +197,10 @@ export function AppSidebar({ rooms }: { rooms: SidebarRoom }) {
                 </p>
               )}
 
-              {filteredRooms.map((room) =>
-                room.visibility === "PRIVATE" ? (
+              {filteredRooms.map((room) => {
+                const isMine = room.ownerId === currentUserId;
+
+                return room.visibility === "PRIVATE" ? (
                   <PrivateRoomDialog
                     categoryLabel={categoryLabels[room.category]}
                     key={room.id}
@@ -209,7 +214,11 @@ export function AppSidebar({ rooms }: { rooms: SidebarRoom }) {
                       onClick={() => handleJoinPublicRoom(room.id)}
                     >
                       <div className="bg-secondary text-secondary-foreground mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
-                        <Globe className="size-3.5!" />
+                        {room.duration === "TEMPORARY" ? (
+                          <Clock className="bg-sidebar-accent! text-sidebar-accent-foreground! size-3.5!" />
+                        ) : (
+                          <Globe className="size-3.5!" />
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -224,12 +233,19 @@ export function AppSidebar({ rooms }: { rooms: SidebarRoom }) {
                               <span>Temp</span>
                             </>
                           )}
+
+                          {isMine && (
+                            <>
+                              <span>·</span>
+                              <span>Your room</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
-              )}
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

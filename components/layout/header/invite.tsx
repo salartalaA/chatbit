@@ -1,10 +1,13 @@
 "use client";
 
 import { Share2 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export default function Invite() {
+  const pathname = usePathname();
+
   const handleShare = async () => {
     const pageURL = window.location.href;
 
@@ -18,6 +21,10 @@ export default function Invite() {
       toast.success("Url copied to clipboard!");
     }
   };
+
+  if (pathname === "/") {
+    return null;
+  }
 
   return (
     <Button
