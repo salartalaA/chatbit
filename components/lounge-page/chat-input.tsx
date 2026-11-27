@@ -3,7 +3,6 @@
 import { Mic, Send, Smile, Trash2 } from "lucide-react";
 import { type SubmitEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { PlaylistDialog } from "@/components/layout/footer/playlist-dialog";
 import { VoiceRecorder } from "@/components/layout/footer/voice-recorder";
 import { Input } from "@/components/ui/input";
 import {
@@ -347,8 +346,6 @@ export default function ChatInput({ roomId }: { roomId: string }) {
         </Popover>
 
         <div className="text-muted-foreground absolute right-2.5 flex items-center gap-1">
-          <PlaylistDialog />
-
           <button
             className="hover:bg-muted hover:text-foreground cursor-pointer rounded p-1 transition-colors"
             onClick={handleStartRecording}
