@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { LoaderCircle, Pause, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import WaveSurfer from "wavesurfer.js";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MessageDTO } from "@/types/rooms";
@@ -10,12 +12,234 @@ interface ChatItemsProps {
   messages: MessageDTO[];
 }
 
-function formatMessageTime(date: string) {
+interface VoiceMessagePlayerProps {
+  duration: number;
+  messageId: string;
+  roomId: string;
+}
+
+interface SignedUrlResponse {
+  error?: string;
+  url?: string;
+}
+
+const PLAYBACK_RATES = [1, 1.5, 2];
+
+function formatMessageTime(date: string): string {
   return new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
   }).format(new Date(date));
+}
+
+function formatAudioTime(seconds: number): string {
+  const safeSeconds = Number.isFinite(seconds)
+    ? Math.floor(Math.max(0, seconds))
+    : 0;
+
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function VoiceMessagePlayer({
+  roomId,
+  messageId,
+  duration,
+}: VoiceMessagePlayerProps) {
+  const waveformRef = useRef<HTMLDivElement>(null);
+  const waveSurferRef = useRef<WaveSurfer | null>(null);
+  const shouldPlayRef = useRef(false);
+
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(duration);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const container = waveformRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const styles = getComputedStyle(container);
+
+    const waveSurfer = WaveSurfer.create({
+      container,
+      height: 28,
+      waveColor:
+        styles.getPropertyValue("--muted-foreground").trim() || "#a1a1aa",
+      progressColor: styles.getPropertyValue("--primary").trim() || "#71717a",
+      cursorWidth: 0,
+      barWidth: 2,
+      barGap: 2,
+      barRadius: 2,
+      normalize: true,
+      interact: true,
+    });
+
+    waveSurferRef.current = waveSurfer;
+
+    waveSurfer.on("ready", (loadedDuration) => {
+      setAudioDuration(loadedDuration);
+      setIsLoading(false);
+
+      // biome-ignore lint/suspicious/noUnnecessaryConditions: Intentional
+      if (shouldPlayRef.current) {
+        shouldPlayRef.current = false;
+
+        waveSurfer.play().catch(() => {
+          setError("Failed to play audio");
+        });
+      }
+    });
+
+    waveSurfer.on("timeupdate", (time) => {
+      setCurrentTime(time);
+    });
+
+    waveSurfer.on("play", () => {
+      setIsPlaying(true);
+    });
+
+    waveSurfer.on("pause", () => {
+      setIsPlaying(false);
+    });
+
+    waveSurfer.on("finish", () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    });
+
+    waveSurfer.on("error", () => {
+      shouldPlayRef.current = false;
+      setIsLoading(false);
+      setIsPlaying(false);
+      setError("Failed to load audio");
+    });
+
+    return () => {
+      shouldPlayRef.current = false;
+      waveSurfer.destroy();
+      waveSurferRef.current = null;
+    };
+  }, []);
+
+  async function handleTogglePlayback() {
+    const waveSurfer = waveSurferRef.current;
+
+    if (!waveSurfer || isLoading) {
+      return;
+    }
+
+    setError(null);
+
+    if (waveSurfer.isPlaying()) {
+      waveSurfer.pause();
+      return;
+    }
+
+    if (signedUrl) {
+      try {
+        await waveSurfer.play();
+      } catch {
+        setError("Failed to play audio");
+      }
+
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await fetch(
+        `/api/rooms/${encodeURIComponent(roomId)}/voice/${encodeURIComponent(messageId)}`
+      );
+
+      const data: SignedUrlResponse = await response.json();
+
+      if (!(response.ok && data.url)) {
+        throw new Error(data.error || "Failed to load voice message");
+      }
+
+      setSignedUrl(data.url);
+      shouldPlayRef.current = true;
+
+      await waveSurfer.load(data.url);
+    } catch (playbackError) {
+      shouldPlayRef.current = false;
+      setIsLoading(false);
+
+      setError(
+        playbackError instanceof Error
+          ? playbackError.message
+          : "Failed to load audio"
+      );
+    }
+  }
+
+  function handlePlaybackRate() {
+    const currentIndex = PLAYBACK_RATES.indexOf(playbackRate);
+    const nextIndex = (currentIndex + 1) % PLAYBACK_RATES.length;
+    const nextRate = PLAYBACK_RATES[nextIndex];
+
+    setPlaybackRate(nextRate);
+    waveSurferRef.current?.setPlaybackRate(nextRate);
+  }
+
+  return (
+    <div className="bg-card text-card-foreground border-border flex w-full max-w-[280px] items-center gap-3 rounded-lg border p-2.5 transition-colors sm:max-w-[320px]">
+      <button
+        aria-label={isPlaying ? "Pause voice note" : "Play voice note"}
+        className="bg-primary text-primary-foreground hover:bg-primary/90 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isLoading}
+        onClick={handleTogglePlayback}
+        title={isPlaying ? "Pause voice note" : "Play voice note"}
+        type="button"
+      >
+        {isLoading && <LoaderCircle className="size-4 animate-spin" />}
+
+        {!isLoading && isPlaying && <Pause className="size-4 fill-current" />}
+
+        {!(isLoading || isPlaying) && (
+          <Play className="ml-0.5 size-4 fill-current" />
+        )}
+      </button>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div
+          className="h-7 w-full min-w-0 cursor-pointer overflow-hidden"
+          ref={waveformRef}
+        />
+
+        <div className="text-muted-foreground text-micro flex items-center justify-between font-mono">
+          <span>
+            {formatAudioTime(currentTime > 0 ? currentTime : audioDuration)}
+          </span>
+
+          <button
+            className="bg-muted text-foreground hover:bg-accent text-nano cursor-pointer rounded-sm px-1.5 py-0.5 font-semibold transition-colors"
+            onClick={handlePlaybackRate}
+            type="button"
+          >
+            {playbackRate}x
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-destructive text-nano" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function ChatItems({ messages, currentUserId }: ChatItemsProps) {
@@ -25,9 +249,9 @@ export default function ChatItems({ messages, currentUserId }: ChatItemsProps) {
 
   const lastMessageId = messages.at(-1)?.id;
 
-  // Detect manual scrolling interactions.
   useEffect(() => {
     const container = containerRef.current;
+
     if (!container) {
       return;
     }
@@ -88,7 +312,6 @@ export default function ChatItems({ messages, currentUserId }: ChatItemsProps) {
     };
   }, []);
 
-  // Scroll to the latest message when a new one arrives.
   useEffect(() => {
     if (!lastMessageId || isAutoScrollPaused.current) {
       return;
@@ -114,14 +337,14 @@ export default function ChatItems({ messages, currentUserId }: ChatItemsProps) {
 
             return (
               <div
-                className={`group border-border relative flex items-start gap-3 rounded-lg border p-3 transition-all duration-150 ${
+                className={`group border-border relative flex items-start gap-3 rounded-lg border p-3 transition-colors duration-150 ${
                   isOwn
                     ? "bg-secondary/20 ml-6 md:ml-12"
                     : "bg-card hover:bg-muted/30 mr-6 md:mr-12"
                 }`}
                 key={message.id}
               >
-                <Avatar className="size-10 shrink-0 rounded-full border border-white/20 shadow-md">
+                <Avatar className="size-10 shrink-0 rounded-full border border-white/20">
                   {message.sender.image && (
                     <AvatarImage
                       alt={name}
@@ -151,9 +374,17 @@ export default function ChatItems({ messages, currentUserId }: ChatItemsProps) {
                     </span>
                   </div>
 
-                  <p className="text-foreground/90 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
-                    {message.content}
-                  </p>
+                  {message.type === "VOICE" ? (
+                    <VoiceMessagePlayer
+                      duration={message.duration ?? 0}
+                      messageId={message.id}
+                      roomId={message.roomId}
+                    />
+                  ) : (
+                    <p className="text-foreground/90 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                  )}
                 </div>
               </div>
             );

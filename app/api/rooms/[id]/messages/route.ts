@@ -80,6 +80,9 @@ export async function POST(
         id: true,
         content: true,
         roomId: true,
+        type: true,
+        audioKey: true,
+        duration: true,
         createdAt: true,
         sender: {
           select: {
@@ -130,6 +133,9 @@ export async function GET(
         id: true,
         content: true,
         roomId: true,
+        duration: true,
+        audioKey: true,
+        type: true,
         createdAt: true,
         sender: {
           select: {

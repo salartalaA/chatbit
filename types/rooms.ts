@@ -10,8 +10,10 @@ export interface TypingUser {
 }
 
 export interface MessageDTO {
-  content: string;
+  audioKey: string | null;
+  content: string | null;
   createdAt: string;
+  duration: number | null;
   id: string;
   roomId: string;
   sender: {
@@ -19,6 +21,12 @@ export interface MessageDTO {
     name: string;
     image: string | null;
   };
+  type: "TEXT" | "VOICE";
+}
+
+export interface SendVoiceMessagePayload {
+  duration: number;
+  roomId: string;
 }
 
 export type SendMessageResponse =
@@ -28,6 +36,16 @@ export type SendMessageResponse =
   | {
       success: false;
       code: "INVALID_REQUEST" | "NOT_IN_ROOM" | "MESSAGE_FAILED";
+      message: string;
+    };
+
+export type SendVoiceMessageResponse =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      code: "INVALID_REQUEST" | "NOT_IN_ROOM" | "VOICE_FAILED";
       message: string;
     };
 
